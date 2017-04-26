@@ -1,0 +1,94 @@
+<div>
+
+	<h3>StringBleed PAPER <small>( CVE 2017-5135 )</small></h3> 
+
+
+
+	<div class="text-right">
+		<strong>Ezequiel Fernandez (Argentina)</strong><br>
+		<strong>Bertin Bervis (Costa Rica)</strong><br>
+		<strong>April 4th 2017</strong><br>
+	</div>
+
+	<br>
+	<div class="text-justify">
+	
+		<p>
+		In DEFCON 24 IoT Village i gave a talk about the danger of SNMP write properties enabled devices in IoT, police patrols, ambulances and other in “critical mission vehicles” were affected in that research.
+		</p>
+
+		<p>
+		In December 2016 with a colleague from Argentina (Ezequiel  Fernandez) we decided to “fuzz” again the SNMP protocol in the internet but this time using different combinations in the community string, for example what if we test which nodes from the internet using SNMP random values  in the community string like “root” “admin” “user” will respond to our requests?
+		In order to recap quickly the SNMP basics, we know there are 3 ways to authenticate the client and requests in the remote SNMP device, SNMP version 1 & 2 use a human-readable string datatype value called “community string” (usually public or private) in SNMP version 3 you have the option to use a user, password and authentication methods.
+		Also, all information like oids ,traps and other stuff is stored in the management information base (MIB).
+		</p>
+
+		<p>
+		We wrote a simple python script from scratch using sockets in order to build the “snmpget” request, in the request we used the sysDescr OID , if the string value we are testing (admin,root etc etc) is the same stored in the SNMP agent for authentication , we are going to retrieve the sysDescr OID information successfully, is like a kind of “brute force”.
+		After some days of scanning we noticed something weird, some devices/fingerprints were always responding no matter which value we used, so what’s going here??? 
+		</p>
+
+		<p>
+		As I mentioned before, the SNMP version 1 & 2 authentication should only accept the value stored in the SNMP agent authentication mechanism, but the behavior based in our results is not accurate like the statement explained previously.
+		</p>
+
+		<p>
+		In few words, we discovered the following: you can use any value string or integer in order to authenticate the SNMP agent successfully in some specific devices, but the worse thing here is : <span class="lead text-danger" >you have full read/write remote permissions using any string/integer value.</span> 
+		</p>
+
+		<p>
+		The <span class="text-danger lead"> CVE 2017-5135</span> Remote code execution in SNMP has been requested, created and reserved for this issue, vulnerability type: <bold><span class="text-info lead"> Incorrect Access Control.</span></bold>
+		</p>
+
+		<p>
+		<span class="lead">Following the right procedures we had to choose one specific model, so we decided to take the CISCO DPC3928SL</span> which was one of the most affected one by the issue, CISCO said that the model is out of support and the company in charge is technicolor, so that was what we did, so let’s reach technicolor in order to clarify what´s going on here, after some email exchange technicolor recognized the issue, but at the end they provided a non-acceptable resolution. 
+		</p>
+
+		<img src="img/paper/1.png" alt="" width="100%"> <br><hr>
+		<img src="img/paper/2.png" alt="" width="100%"> <br><hr>
+
+
+		<p>
+		As you can see, technicolor explains that   the issue is a “control misconfiguration issue” by the ISP and not technicolor, wow! Great way to clean up your hands! But for us that was not enough, ok technicolor thanks for your help and fast response, but we are going to prove other thing here . so let´s start!
+		</p>
+
+		<p>Now you have the idea about what the issue is, but probably you´re thinking .. well …are there more devices affected by the same issue in the internet??? The answer is yes,  we can prove  that other devices from different vendors/brands are also affected by the same behavior in SNMP, this proves also that the technicolor answer is wrong, completely wrong….</p>
+
+		<p><strong>We call it <span class="text-success">STRINGBLEED </span>:-D</strong></p>
+
+		<p>
+			We decided to scan again but this generating not specific human-readable strings, we decided to generate a random hash value and send it to all SNMP devices in the internet and the results are shocking, at this point we have detected more than <strong>150</strong> unique fingerprints affected by stringbleed,
+		</p>
+
+		<p>In order to have an idea, we are releasing the first 50 batch which demonstrate that technicolor answer is wrong, the issue is not ISP misconfiguration, the problem seems to be in the code.</p>
+
+		<h3>Conclusions</h3>
+		<ul>
+			<li>We discovered a full remote actions execution bypassing the control access in SNMP using any string/integer value</li>
+			<li>You can write strings in the MIB</li>
+			<li>You can retrieve easily password and other sensitive information without the need to guess the community string.</li>
+			<li>The bug is difficult to solve since several vendors/brands are affected and the list growing everyday thanks to our scans</li>
+			<li>Technicolor resolutions lacks of technical analysis and according our results is unacceptable </li>
+		</ul>
+
+		<h3>PoC</h3>
+
+		<b>[Attack Vectors]: </b><b>Community string</b>
+		<p>IP of theoric cablemodems vulnerable:"192.168.0.1"</p>
+		<div class="weell cl">
+			
+			<p><span class="text-danger">[usr@pwn:~$] </span>snmpset -v 1 -c "#Strigbleed" <span class="text-warning">192.168.0.1</span> 1.3.6.1.2.1.1.6.0 s "test" <span class="blink_text">▓</span></p>
+			<p class="text-success" > iso.3.6.1.2.1.1.6.0 = STRING: "test"
+			
+			<hr>
+			<p><span class="text-danger">[usr@pwn:~$] </span>snmpget -v 1 -c "#Strigbleed" <span class="text-warning">192.168.0.1</span> iso.3.6.1.2.1.1.1.0 <span class="blink_text">▓</span></p>
+			<p class="text-success" >  iso.3.6.1.2.1.1.1.0 = STRING: "Cisco DPC3928SL DOCSIS 3.0 1-PORT Voice Gateway &#60;&#60;HW_REV: 1.0; VENDOR: Cisco; BOOTR: 2.4.0; SW_REV: D3928SL-P15-13-A386-c3420r55105-160127a; MODEL: DPC3928SL&#62;&#62;" </p>
+
+		</div>
+
+
+	</div>
+</div>
+
+		<br>
+		<hr><hr>
