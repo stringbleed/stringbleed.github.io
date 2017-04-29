@@ -1,6 +1,15 @@
 $(document).ready(function() {
 	//$("ul > li:nth-child(4) > a").addClass("disabled")
 	$(function () {
+		$(window).scroll(function(event) {
+			if(document.body.scrollTop > 70 ){
+				$('.masthead').css('background', '#222');
+			}else{
+				
+				$('.masthead').css('background', 'transparent');
+			}
+		});
+
 		$( "#menuSelected" ).load( "includes/home.html" );
 
 		function setActive(){
